@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Voice Ledger — Expense Tracker</title>
+<title>Spend Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -23,7 +23,8 @@
     --text-muted: #8A93A8;
     --radius: 14px;
   }
-  *{box-sizing:border-box; margin:0; padding:0;}
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color: transparent;}
+  html, body{ overflow-x:hidden; width:100%; }
   body{
     background: var(--navy);
     background-image:
@@ -32,17 +33,23 @@
     color: var(--text-light);
     font-family: 'Manrope', sans-serif;
     min-height: 100vh;
+    min-height: 100dvh;
     display:flex;
     justify-content:center;
-    padding: 0 0 60px;
+    padding: 0 0 calc(60px + env(safe-area-inset-bottom));
+    overscroll-behavior-y: contain;
+    -webkit-text-size-adjust: 100%;
   }
   .mono{ font-family:'Space Mono', monospace; }
-  .app{ width:100%; max-width:480px; min-height:100vh; background: var(--navy); position:relative; }
+  .app{
+    width:100%; max-width:480px; min-height:100vh; min-height:100dvh;
+    background: var(--navy); position:relative; overflow-x:hidden;
+  }
 
   /* ---------- HEADER ---------- */
   header{
     background: var(--navy-deep);
-    padding: 28px 24px 22px;
+    padding: calc(28px + env(safe-area-inset-top)) 24px 22px;
     border-bottom: 1px solid rgba(224,165,55,0.15);
   }
   .eyebrow{
@@ -50,7 +57,7 @@
     color: var(--marigold); font-weight: 700; margin-bottom: 10px;
   }
   .month-total{
-    font-family:'Space Mono', monospace; font-size: 40px; font-weight:700;
+    font-family:'Space Mono', monospace; font-size: clamp(30px, 9vw, 40px); font-weight:700;
     color: var(--text-light); letter-spacing: -1px;
   }
   .month-total span{ color: var(--marigold); }
@@ -90,6 +97,7 @@
     cursor:pointer;
     display:flex; align-items:center; justify-content:center;
     transition: transform 0.15s ease;
+    touch-action: manipulation;
   }
   .mic-btn:active{ transform: scale(0.94); }
   .mic-btn.listening{ background: radial-gradient(circle at 35% 30%, #E07B6B, var(--vermilion)); }
@@ -106,8 +114,8 @@
   }
   .manual-toggle{
     background:none; border:1px solid rgba(255,255,255,0.15); color:var(--text-muted);
-    font-size:12.5px; padding:8px 16px; border-radius:100px; cursor:pointer; margin-top:4px;
-    font-family:'Manrope',sans-serif;
+    font-size:12.5px; padding:10px 18px; min-height:38px; border-radius:100px; cursor:pointer; margin-top:4px;
+    font-family:'Manrope',sans-serif; touch-action: manipulation;
   }
   .manual-toggle:hover{ border-color: var(--marigold); color:var(--marigold); }
 
@@ -146,7 +154,7 @@
   .amount-row .rupee{ font-family:'Space Mono', monospace; font-size:26px; color:var(--vermilion); }
   .amount-row input{
     font-family:'Space Mono', monospace; font-size:36px; font-weight:700; color:var(--vermilion);
-    border:none; background:none; width:170px; text-align:center; border-bottom:2px dashed var(--paper-line);
+    border:none; background:none; width:100%; max-width:170px; text-align:center; border-bottom:2px dashed var(--paper-line);
     padding-bottom:4px;
   }
   .amount-row input:focus{ outline:none; border-color:var(--vermilion); }
@@ -156,8 +164,9 @@
   }
   .chips{ display:flex; flex-wrap:wrap; gap:8px; }
   .chip{
-    font-size:12.5px; padding:7px 12px; border-radius:100px; border:1.5px solid var(--paper-line);
+    font-size:12.5px; padding:9px 13px; min-height:36px; border-radius:100px; border:1.5px solid var(--paper-line);
     background:transparent; color:var(--ink-soft); cursor:pointer; font-family:'Manrope',sans-serif;
+    touch-action: manipulation;
   }
   .chip.active{ background: var(--vermilion); border-color:var(--vermilion); color:#fff; font-weight:700; }
   .note-input, .date-input{
@@ -166,12 +175,44 @@
   }
   .receipt-actions{ display:flex; gap:10px; margin-top:22px; }
   .btn{
-    flex:1; padding:12px; border-radius:8px; border:none; font-weight:700; font-size:13.5px;
-    cursor:pointer; font-family:'Manrope',sans-serif;
+    flex:1; padding:14px 12px; min-height:46px; border-radius:8px; border:none; font-weight:700; font-size:13.5px;
+    cursor:pointer; font-family:'Manrope',sans-serif; touch-action: manipulation; user-select:none;
   }
   .btn-ghost{ background:transparent; border:1.5px solid var(--paper-line); color:var(--ink-soft); }
   .btn-primary{ background: var(--ink); color: var(--paper); }
   .btn-primary:active, .btn-ghost:active{ transform: scale(0.98); }
+
+  /* ---------- TRENDS CHART ---------- */
+  .chart-section{ padding: 8px 20px 4px; }
+  .chart-top{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; }
+  .chart-total{ font-family:'Space Mono', monospace; font-size:22px; font-weight:700; color:var(--text-light); margin-top:4px; }
+  .chart-total-label{ font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .chart-toggle{ display:flex; gap:2px; background:rgba(255,255,255,0.05); padding:3px; border-radius:100px; flex-shrink:0; }
+  .toggle-btn{
+    font-size:11.5px; padding:7px 14px; min-height:30px; border-radius:100px; border:none;
+    background:transparent; color:var(--text-muted); cursor:pointer; font-family:'Manrope',sans-serif;
+    touch-action: manipulation;
+  }
+  .toggle-btn.active{ background:var(--marigold); color:var(--navy-deep); font-weight:700; }
+  .chart-bars{ display:flex; align-items:flex-end; justify-content:space-between; gap:5px; height:128px; }
+  .bar-col{ flex:1; display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end; min-width:0; }
+  .bar-value{
+    font-size:9px; color:var(--marigold); font-family:'Space Mono', monospace; margin-bottom:5px;
+    height:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+  }
+  .bar-track{
+    width:100%; max-width:30px; height:88px; background:rgba(255,255,255,0.06);
+    border-radius:6px 6px 3px 3px; display:flex; align-items:flex-end; overflow:hidden;
+  }
+  .bar-fill{
+    width:100%; background:linear-gradient(180deg, #F3C264, var(--marigold));
+    border-radius:6px 6px 0 0; transition: height 0.5s cubic-bezier(.2,.9,.3,1); min-height:3px;
+  }
+  .bar-col.current .bar-value{ color:var(--text-light); }
+  .bar-col.current .bar-fill{ background:linear-gradient(180deg, #E8917F, var(--vermilion)); }
+  .bar-label{ font-size:10.5px; color:var(--text-muted); margin-top:8px; font-weight:600; }
+  .bar-col.current .bar-label{ color:var(--text-light); }
+  .chart-empty{ text-align:center; color:var(--text-muted); font-size:12.5px; padding:20px 0; }
 
   /* ---------- LEDGER TAPE ---------- */
   .ledger{ padding: 6px 20px 0; }
@@ -201,10 +242,10 @@
 
   /* ---------- TOAST ---------- */
   .toast{
-    position:fixed; bottom:24px; left:50%; transform: translateX(-50%) translateY(20px);
+    position:fixed; bottom: calc(24px + env(safe-area-inset-bottom)); left:50%; transform: translateX(-50%) translateY(20px);
     background: var(--ink); color:#fff; padding: 11px 20px; border-radius: 100px;
     font-size: 13px; font-weight:600; opacity:0; pointer-events:none; transition: all 0.25s ease;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index:50; max-width:90%; text-align:center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index:50; max-width:calc(100% - 40px); text-align:center;
   }
   .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
 
@@ -214,8 +255,9 @@
   }
 
   @media (max-width:360px){
-    .month-total{ font-size:34px; }
-    .amount-row input{ width:140px; font-size:30px; }
+    .mic-sub{ font-size:12px; }
+    .receipt{ padding: 22px 16px 16px; }
+    .entry-note{ max-width: 140px; }
   }
 </style>
 </head>
@@ -223,7 +265,7 @@
 <div class="app">
 
   <header>
-    <div class="eyebrow">Voice Ledger</div>
+    <div class="eyebrow">Spend Tracker</div>
     <div class="month-total"><span>₹</span><span id="monthTotal">0</span></div>
     <div class="month-sub" id="monthLabel">spent this month</div>
     <div class="today-pill">Today &nbsp;<b id="todayTotal">₹0</b></div>
@@ -256,6 +298,21 @@
 
   <div class="receipt-stage" id="receiptStage"></div>
 
+  <section class="chart-section">
+    <div class="chart-top">
+      <div>
+        <div class="ledger-heading" style="margin:0;">Trends</div>
+        <div class="chart-total" id="chartTotal">₹0</div>
+        <div class="chart-total-label" id="chartTotalLabel">spent this week</div>
+      </div>
+      <div class="chart-toggle">
+        <button type="button" class="toggle-btn active" id="rangeWeek">Week</button>
+        <button type="button" class="toggle-btn" id="rangeMonth">Month</button>
+      </div>
+    </div>
+    <div class="chart-bars" id="chartBars"></div>
+  </section>
+
   <div class="ledger" id="ledgerStage">
     <div class="ledger-heading">Ledger</div>
     <div id="ledgerList"></div>
@@ -271,7 +328,7 @@
    See the setup guide provided alongside this file.
    ========================================================= */
 const CONFIG = {
-  SHEET_URL: "https://script.google.com/macros/s/AKfycbwHArYjVXkj6FafOkZ1-PvSoasCsltW60B5m_YNodSQSqGRFnRk9hzsoNV5PFUdUaHi/exec",
+  SHEET_URL: "https://script.google.com/macros/s/AKfycbzkMj9SbB00bUrl5yorcTvAj03n6QqDZXBgx7-8SNvMabfSaaPe_XnZbe1TvrbE8-iR/exec",
 };
 
 /* ---------- CATEGORY DEFINITIONS ---------- */
@@ -307,10 +364,21 @@ const toastEl = document.getElementById('toast');
 const unsupportedNote = document.getElementById('unsupportedNote');
 const manualToggle = document.getElementById('manualToggle');
 const setupBanner = document.getElementById('setupBanner');
+const chartBarsEl = document.getElementById('chartBars');
+const chartTotalEl = document.getElementById('chartTotal');
+const chartTotalLabelEl = document.getElementById('chartTotalLabel');
+const rangeWeekBtn = document.getElementById('rangeWeek');
+const rangeMonthBtn = document.getElementById('rangeMonth');
+let chartRange = 'week';
 
 /* ---------- HELPERS ---------- */
 function fmtINR(n){
   return Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+function fmtCompact(n){
+  if(n>=100000) return (n/100000).toFixed(1).replace(/\.0$/,'')+'L';
+  if(n>=1000) return (n/1000).toFixed(1).replace(/\.0$/,'')+'k';
+  return fmtINR(n);
 }
 function todayISO(){
   const d = new Date();
@@ -322,6 +390,7 @@ function isoMinusDays(iso, days){
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,'0')+"-"+String(d.getDate()).padStart(2,'0');
 }
 function dayLabel(iso){
+  if(!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "Earlier";
   const today = todayISO();
   const yest = isoMinusDays(today,1);
   if(iso===today) return "Today";
@@ -492,8 +561,12 @@ async function loadExpenses(){
 async function postToSheet(entry){
   if(!backendReady()) return;
   try{
+    // 'no-cors' is used because Apps Script's CORS headers on POST
+    // responses are unreliable across deployments. We don't need to
+    // read the response here, only confirm the request was sent.
     await fetch(CONFIG.SHEET_URL, {
       method: 'POST',
+      mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(entry)
     });
@@ -501,6 +574,65 @@ async function postToSheet(entry){
     showToast("Saved here, but couldn't sync to sheet");
   }
 }
+
+/* ---------- TRENDS CHART ---------- */
+function getWeekBuckets(){
+  const dayLetters = ['S','M','T','W','T','F','S'];
+  const today = todayISO();
+  const buckets = [];
+  for(let i=6;i>=0;i--){
+    const iso = isoMinusDays(today, i);
+    const d = new Date(iso+"T00:00:00");
+    const sum = expenses.filter(e=>e.date===iso).reduce((s,e)=>s+Number(e.amount),0);
+    buckets.push({ key: iso, label: dayLetters[d.getDay()], sum, isCurrent: iso===today });
+  }
+  return buckets;
+}
+function getMonthBuckets(){
+  const now = new Date();
+  const buckets = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const ym = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,'0');
+    const sum = expenses.filter(e=>e.date && e.date.slice(0,7)===ym).reduce((s,e)=>s+Number(e.amount),0);
+    buckets.push({ key: ym, label: d.toLocaleDateString('en-IN',{month:'short'}), sum, isCurrent: i===0 });
+  }
+  return buckets;
+}
+function renderChart(){
+  const buckets = chartRange==='week' ? getWeekBuckets() : getMonthBuckets();
+  const total = buckets.reduce((s,b)=>s+b.sum,0);
+  const max = Math.max(...buckets.map(b=>b.sum), 1);
+
+  chartTotalEl.textContent = "₹"+fmtINR(total);
+  chartTotalLabelEl.textContent = chartRange==='week' ? 'spent this week' : 'spent in last 6 months';
+
+  if(total===0){
+    chartBarsEl.innerHTML = `<div class="chart-empty" style="width:100%;">Nothing logged yet for this ${chartRange==='week'?'week':'period'}.</div>`;
+    return;
+  }
+
+  chartBarsEl.innerHTML = buckets.map(b=>{
+    const h = b.sum>0 ? Math.max(6, Math.round((b.sum/max)*100)) : 0;
+    return `<div class="bar-col ${b.isCurrent?'current':''}">
+      <div class="bar-value">${b.sum>0 ? fmtCompact(b.sum) : ''}</div>
+      <div class="bar-track"><div class="bar-fill" style="height:${h}%"></div></div>
+      <div class="bar-label">${b.label}</div>
+    </div>`;
+  }).join('');
+}
+rangeWeekBtn.addEventListener('click', ()=>{
+  chartRange='week';
+  rangeWeekBtn.classList.add('active');
+  rangeMonthBtn.classList.remove('active');
+  renderChart();
+});
+rangeMonthBtn.addEventListener('click', ()=>{
+  chartRange='month';
+  rangeMonthBtn.classList.add('active');
+  rangeWeekBtn.classList.remove('active');
+  renderChart();
+});
 
 /* ---------- RENDER ---------- */
 function renderTotals(){
