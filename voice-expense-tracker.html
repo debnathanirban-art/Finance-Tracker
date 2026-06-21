@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Voice Ledger — Expense Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy: #1B1F2B;
+    --navy-deep: #12151E;
+    --paper: #FFFDF7;
+    --paper-line: #E8E2D2;
+    --marigold: #E0A537;
+    --marigold-soft: rgba(224,165,55,0.18);
+    --marigold-glow: rgba(224,165,55,0.35);
+    --vermilion: #C24A3D;
+    --green-stamp: #4F7A5A;
+    --ink: #2B2A28;
+    --ink-soft: #6B6558;
+    --text-light: #EDEAE2;
+    --text-muted: #8A93A8;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background: var(--navy);
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(224,165,55,0.06), transparent 40%),
+      radial-gradient(circle at 80% 100%, rgba(224,165,55,0.05), transparent 40%);
+    color: var(--text-light);
+    font-family: 'Manrope', sans-serif;
+    min-height: 100vh;
+    display:flex;
+    justify-content:center;
+    padding: 0 0 60px;
+  }
+  .mono{ font-family:'Space Mono', monospace; }
+  .app{ width:100%; max-width:480px; min-height:100vh; background: var(--navy); position:relative; }
+
+  /* ---------- HEADER ---------- */
+  header{
+    background: var(--navy-deep);
+    padding: 28px 24px 22px;
+    border-bottom: 1px solid rgba(224,165,55,0.15);
+  }
+  .eyebrow{
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--marigold); font-weight: 700; margin-bottom: 10px;
+  }
+  .month-total{
+    font-family:'Space Mono', monospace; font-size: 40px; font-weight:700;
+    color: var(--text-light); letter-spacing: -1px;
+  }
+  .month-total span{ color: var(--marigold); }
+  .month-sub{ font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .today-pill{
+    display:inline-flex; align-items:center; gap:6px; margin-top:14px;
+    background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);
+    padding: 6px 12px; border-radius: 100px; font-size: 12px; color: var(--text-muted);
+  }
+  .today-pill b{ color: var(--text-light); font-family:'Space Mono', monospace; }
+
+  /* ---------- MIC SECTION ---------- */
+  .mic-zone{
+    padding: 36px 24px 28px;
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+    gap: 14px;
+  }
+  .mic-wrap{ position:relative; width:118px; height:118px; }
+  .ring{
+    position:absolute; inset:0; border-radius:50%;
+    border:1.5px solid var(--marigold-glow);
+    opacity:0; transform:scale(0.8);
+  }
+  .mic-wrap.listening .ring{ animation: pulse 1.8s ease-out infinite; }
+  .mic-wrap.listening .ring:nth-child(2){ animation-delay:0.5s; }
+  .mic-wrap.listening .ring:nth-child(3){ animation-delay:1s; }
+  @keyframes pulse{
+    0%{ opacity:0.9; transform:scale(0.75); }
+    100%{ opacity:0; transform:scale(1.7); }
+  }
+  .mic-btn{
+    position:absolute; inset:14px;
+    border-radius:50%;
+    border:none;
+    background: radial-gradient(circle at 35% 30%, #F3C264, var(--marigold));
+    box-shadow: 0 8px 24px rgba(224,165,55,0.35), inset 0 -4px 8px rgba(0,0,0,0.15);
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition: transform 0.15s ease;
+  }
+  .mic-btn:active{ transform: scale(0.94); }
+  .mic-btn.listening{ background: radial-gradient(circle at 35% 30%, #E07B6B, var(--vermilion)); }
+  .mic-btn svg{ width:34px; height:34px; }
+  .mic-hint{ font-size: 14px; color: var(--text-light); font-weight:600; }
+  .mic-sub{ font-size: 12.5px; color: var(--text-muted); max-width: 260px; line-height:1.5; }
+  .transcript{
+    min-height: 20px; font-family:'Space Mono', monospace; font-size: 13px;
+    color: var(--marigold); padding: 0 16px;
+  }
+  .unsupported-note{
+    font-size:12px; color:var(--text-muted); background:rgba(194,74,61,0.12);
+    border:1px solid rgba(194,74,61,0.3); padding:10px 14px; border-radius:10px; margin-top:6px;
+  }
+  .manual-toggle{
+    background:none; border:1px solid rgba(255,255,255,0.15); color:var(--text-muted);
+    font-size:12.5px; padding:8px 16px; border-radius:100px; cursor:pointer; margin-top:4px;
+    font-family:'Manrope',sans-serif;
+  }
+  .manual-toggle:hover{ border-color: var(--marigold); color:var(--marigold); }
+
+  /* ---------- RECEIPT SLIP (preview) ---------- */
+  .receipt-stage{ padding: 0 20px; }
+  .receipt{
+    position:relative;
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 4px;
+    padding: 26px 22px 20px;
+    margin: 10px 0 26px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+    animation: print-out 0.35s cubic-bezier(.2,.9,.3,1.2);
+  }
+  @keyframes print-out{
+    from{ opacity:0; transform: translateY(-18px) scale(0.97); }
+    to{ opacity:1; transform: translateY(0) scale(1); }
+  }
+  .receipt::before, .receipt::after{
+    content:""; position:absolute; left:0; right:0; height:11px;
+    background-image:
+      linear-gradient(135deg, var(--paper) 50%, transparent 50%),
+      linear-gradient(45deg, var(--paper) 50%, transparent 50%);
+    background-size: 14px 14px; background-repeat: repeat-x;
+  }
+  .receipt::before{ top:-10px; background-position: 0 100%, 0 100%; }
+  .receipt::after{ bottom:-10px; transform: scaleY(-1); }
+  .receipt-title{
+    font-family:'Space Mono', monospace; font-size:11px; letter-spacing:2px;
+    text-transform:uppercase; color: var(--ink-soft); text-align:center; margin-bottom:16px;
+  }
+  .amount-row{
+    display:flex; align-items:baseline; justify-content:center; gap:4px; margin-bottom:18px;
+  }
+  .amount-row .rupee{ font-family:'Space Mono', monospace; font-size:26px; color:var(--vermilion); }
+  .amount-row input{
+    font-family:'Space Mono', monospace; font-size:36px; font-weight:700; color:var(--vermilion);
+    border:none; background:none; width:170px; text-align:center; border-bottom:2px dashed var(--paper-line);
+    padding-bottom:4px;
+  }
+  .amount-row input:focus{ outline:none; border-color:var(--vermilion); }
+  .field-label{
+    font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-soft);
+    margin-bottom:8px; margin-top:16px; font-weight:700;
+  }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    font-size:12.5px; padding:7px 12px; border-radius:100px; border:1.5px solid var(--paper-line);
+    background:transparent; color:var(--ink-soft); cursor:pointer; font-family:'Manrope',sans-serif;
+  }
+  .chip.active{ background: var(--vermilion); border-color:var(--vermilion); color:#fff; font-weight:700; }
+  .note-input, .date-input{
+    width:100%; border:1.5px solid var(--paper-line); border-radius:8px; padding:10px 12px;
+    font-family:'Manrope',sans-serif; font-size:13.5px; color:var(--ink); background:#fff;
+  }
+  .receipt-actions{ display:flex; gap:10px; margin-top:22px; }
+  .btn{
+    flex:1; padding:12px; border-radius:8px; border:none; font-weight:700; font-size:13.5px;
+    cursor:pointer; font-family:'Manrope',sans-serif;
+  }
+  .btn-ghost{ background:transparent; border:1.5px solid var(--paper-line); color:var(--ink-soft); }
+  .btn-primary{ background: var(--ink); color: var(--paper); }
+  .btn-primary:active, .btn-ghost:active{ transform: scale(0.98); }
+
+  /* ---------- LEDGER TAPE ---------- */
+  .ledger{ padding: 6px 20px 0; }
+  .ledger-heading{
+    font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted);
+    font-weight:700; margin: 18px 0 10px;
+  }
+  .day-group{ margin-bottom: 6px; }
+  .day-label{
+    font-family:'Space Mono', monospace; font-size:11px; color:var(--marigold);
+    margin: 18px 0 8px; display:flex; align-items:center; gap:8px;
+  }
+  .day-label::after{ content:""; flex:1; height:1px; background: repeating-linear-gradient(90deg, rgba(224,165,55,0.4) 0 4px, transparent 4px 8px); }
+  .entry{
+    display:flex; align-items:center; gap:12px; padding: 10px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.08);
+  }
+  .entry-emoji{ font-size:20px; width:30px; text-align:center; }
+  .entry-main{ flex:1; min-width:0; }
+  .entry-cat{ font-size:13.5px; font-weight:700; color:var(--text-light); }
+  .entry-note{ font-size:11.5px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .entry-amt{ font-family:'Space Mono', monospace; font-size:15px; font-weight:700; color:var(--text-light); }
+  .empty-state{
+    text-align:center; color:var(--text-muted); font-size:13px; padding: 30px 10px; line-height:1.6;
+  }
+  .empty-state b{ color:var(--marigold); }
+
+  /* ---------- TOAST ---------- */
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color:#fff; padding: 11px 20px; border-radius: 100px;
+    font-size: 13px; font-weight:600; opacity:0; pointer-events:none; transition: all 0.25s ease;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index:50; max-width:90%; text-align:center;
+  }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+  .setup-banner{
+    margin: 0 20px 0; background: rgba(224,165,55,0.1); border:1px solid rgba(224,165,55,0.3);
+    color: var(--marigold); font-size:12px; padding:12px 14px; border-radius:10px; line-height:1.5;
+  }
+
+  @media (max-width:360px){
+    .month-total{ font-size:34px; }
+    .amount-row input{ width:140px; font-size:30px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="eyebrow">Voice Ledger</div>
+    <div class="month-total"><span>₹</span><span id="monthTotal">0</span></div>
+    <div class="month-sub" id="monthLabel">spent this month</div>
+    <div class="today-pill">Today &nbsp;<b id="todayTotal">₹0</b></div>
+  </header>
+
+  <div id="setupBanner" class="setup-banner" style="display:none; margin-top:16px;">
+    Voice entries are working in-session only. Paste your Apps Script URL into <code>CONFIG.SHEET_URL</code> in this file to save permanently to your Google Sheet. See setup notes below the app.
+  </div>
+
+  <section class="mic-zone">
+    <div class="mic-wrap" id="micWrap">
+      <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+      <button class="mic-btn" id="micBtn" aria-label="Speak an expense">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1B1F2B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+    </div>
+    <div class="mic-hint" id="micHint">Tap and say what you spent</div>
+    <div class="mic-sub">e.g. "250 rupees for groceries" or "spent 80 on auto"</div>
+    <div class="transcript" id="transcript"></div>
+    <div id="unsupportedNote" class="unsupported-note" style="display:none;">
+      Voice input isn't supported in this browser. Try Chrome on Android or desktop — or add an expense manually below.
+    </div>
+    <button class="manual-toggle" id="manualToggle">+ Add manually instead</button>
+  </section>
+
+  <div class="receipt-stage" id="receiptStage"></div>
+
+  <div class="ledger" id="ledgerStage">
+    <div class="ledger-heading">Ledger</div>
+    <div id="ledgerList"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   CONFIG — paste your deployed Apps Script Web App URL below
+   See the setup guide provided alongside this file.
+   ========================================================= */
+const CONFIG = {
+  SHEET_URL: "https://script.google.com/macros/s/AKfycbx5lHFLP15B9n4RLpl6kEk_sL1v6jz91OHgG3WFg_-xc2_b1F2HxUFjL4fITAX1xrjrHg/exec",
+};
+
+/* ---------- CATEGORY DEFINITIONS ---------- */
+const CATEGORIES = [
+  { name: "Food",         emoji: "🍛", keywords: ["food","lunch","dinner","breakfast","restaurant","swiggy","zomato","snack","tea","coffee","eat"] },
+  { name: "Groceries",    emoji: "🛒", keywords: ["groceries","grocery","vegetables","veggies","milk","kirana","supermarket"] },
+  { name: "Transport",    emoji: "🚌", keywords: ["uber","ola","taxi","auto","bus","metro","train","cab","fuel","petrol","diesel","rickshaw"] },
+  { name: "Shopping",     emoji: "🛍️", keywords: ["shopping","clothes","amazon","flipkart","shoes","dress"] },
+  { name: "Bills",        emoji: "💡", keywords: ["bill","electricity","recharge","wifi","internet","rent","emi"] },
+  { name: "Entertainment",emoji: "🎬", keywords: ["movie","netflix","game","entertainment","outing","concert"] },
+  { name: "Health",       emoji: "💊", keywords: ["medicine","doctor","hospital","pharmacy","medical"] },
+  { name: "Travel",       emoji: "✈️", keywords: ["travel","flight","hotel","trip","holiday"] },
+  { name: "Other",        emoji: "🧾", keywords: [] },
+];
+
+/* ---------- STATE ---------- */
+let expenses = [];      // {date, amount, category, note, timestamp}
+let pending = null;     // entry currently in the receipt preview
+let recognition = null;
+let listening = false;
+
+/* ---------- DOM ---------- */
+const micWrap = document.getElementById('micWrap');
+const micBtn = document.getElementById('micBtn');
+const micHint = document.getElementById('micHint');
+const transcriptEl = document.getElementById('transcript');
+const receiptStage = document.getElementById('receiptStage');
+const ledgerList = document.getElementById('ledgerList');
+const monthTotalEl = document.getElementById('monthTotal');
+const monthLabelEl = document.getElementById('monthLabel');
+const todayTotalEl = document.getElementById('todayTotal');
+const toastEl = document.getElementById('toast');
+const unsupportedNote = document.getElementById('unsupportedNote');
+const manualToggle = document.getElementById('manualToggle');
+const setupBanner = document.getElementById('setupBanner');
+
+/* ---------- HELPERS ---------- */
+function fmtINR(n){
+  return Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,'0')+"-"+String(d.getDate()).padStart(2,'0');
+}
+function isoMinusDays(iso, days){
+  const d = new Date(iso+"T00:00:00");
+  d.setDate(d.getDate()-days);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,'0')+"-"+String(d.getDate()).padStart(2,'0');
+}
+function dayLabel(iso){
+  const today = todayISO();
+  const yest = isoMinusDays(today,1);
+  if(iso===today) return "Today";
+  if(iso===yest) return "Yesterday";
+  const d = new Date(iso+"T00:00:00");
+  return d.toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+}
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(()=>toastEl.classList.remove('show'), 2200);
+}
+
+/* ---------- VOICE PARSING ---------- */
+function parseAmount(text){
+  const t = text.toLowerCase();
+  let m = t.match(/(?:rs\.?|rupees?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)/);
+  if(!m) m = t.match(/([\d,]+(?:\.\d{1,2})?)\s*(?:rs\.?|rupees?|inr|₹)/);
+  if(m) return parseFloat(m[1].replace(/,/g,''));
+  const all = [...t.matchAll(/([\d,]+(?:\.\d{1,2})?)/g)].map(x=>parseFloat(x[1].replace(/,/g,'')));
+  if(all.length===0) return null;
+  return Math.max(...all);
+}
+function parseCategory(text){
+  const t = text.toLowerCase();
+  for(const cat of CATEGORIES){
+    if(cat.keywords.some(k => t.includes(k))) return cat.name;
+  }
+  return "Other";
+}
+function parseDate(text){
+  const t = text.toLowerCase();
+  if(t.includes("yesterday")) return isoMinusDays(todayISO(),1);
+  return todayISO();
+}
+function capitalize(s){
+  return s.charAt(0).toUpperCase()+s.slice(1);
+}
+
+/* ---------- SPEECH RECOGNITION SETUP ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if(!SR){
+  unsupportedNote.style.display = 'block';
+  micBtn.disabled = true;
+  micBtn.style.opacity = '0.4';
+} else {
+  recognition = new SR();
+  recognition.lang = 'en-IN';
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  recognition.onstart = () => {
+    listening = true;
+    micWrap.classList.add('listening');
+    micBtn.classList.add('listening');
+    micHint.textContent = "Listening…";
+    transcriptEl.textContent = "";
+  };
+  recognition.onresult = (e) => {
+    let txt = "";
+    for(let i=0;i<e.results.length;i++) txt += e.results[i][0].transcript;
+    transcriptEl.textContent = txt;
+  };
+  recognition.onerror = () => {
+    showToast("Didn't catch that — try again");
+  };
+  recognition.onend = () => {
+    listening = false;
+    micWrap.classList.remove('listening');
+    micBtn.classList.remove('listening');
+    micHint.textContent = "Tap and say what you spent";
+    const finalText = transcriptEl.textContent.trim();
+    if(finalText) handleTranscript(finalText);
+  };
+}
+
+micBtn.addEventListener('click', () => {
+  if(!recognition) return;
+  if(listening){ recognition.stop(); return; }
+  receiptStage.innerHTML = ""; pending = null;
+  try{ recognition.start(); }catch(err){ /* already started */ }
+});
+
+manualToggle.addEventListener('click', () => {
+  openReceipt({ amount: null, category: "Other", note: "", date: todayISO() });
+});
+
+function handleTranscript(text){
+  const amount = parseAmount(text);
+  const category = parseCategory(text);
+  const date = parseDate(text);
+  openReceipt({ amount, category, note: capitalize(text), date });
+}
+
+/* ---------- RECEIPT PREVIEW ---------- */
+function openReceipt(entry){
+  pending = entry;
+  receiptStage.innerHTML = `
+    <div class="receipt">
+      <div class="receipt-title">— New Entry —</div>
+      <div class="amount-row">
+        <span class="rupee">₹</span>
+        <input type="number" inputmode="decimal" id="rAmount" placeholder="0" value="${entry.amount ?? ''}">
+      </div>
+      <div class="field-label">Category</div>
+      <div class="chips" id="rChips">
+        ${CATEGORIES.map(c => `<button type="button" class="chip ${c.name===entry.category?'active':''}" data-cat="${c.name}">${c.emoji} ${c.name}</button>`).join('')}
+      </div>
+      <div class="field-label">Note</div>
+      <input class="note-input" id="rNote" value="${entry.note.replace(/"/g,'&quot;')}" placeholder="What was it for?">
+      <div class="field-label">Date</div>
+      <input class="date-input" type="date" id="rDate" value="${entry.date}">
+      <div class="receipt-actions">
+        <button class="btn btn-ghost" id="rDiscard">Tear up</button>
+        <button class="btn btn-primary" id="rSave">Add to ledger</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('rChips').addEventListener('click', (e)=>{
+    const btn = e.target.closest('.chip'); if(!btn) return;
+    document.querySelectorAll('#rChips .chip').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    pending.category = btn.dataset.cat;
+  });
+  document.getElementById('rDiscard').addEventListener('click', ()=>{
+    receiptStage.innerHTML=""; pending=null;
+  });
+  document.getElementById('rSave').addEventListener('click', saveEntry);
+  document.getElementById('rAmount').focus();
+}
+
+async function saveEntry(){
+  const amount = parseFloat(document.getElementById('rAmount').value);
+  const note = document.getElementById('rNote').value.trim();
+  const date = document.getElementById('rDate').value || todayISO();
+  const category = pending.category;
+
+  if(!amount || amount<=0){
+    showToast("Enter an amount first");
+    return;
+  }
+  const entry = { amount, category, note, date, timestamp: new Date().toISOString() };
+  expenses.unshift(entry);
+  renderLedger();
+  renderTotals();
+  receiptStage.innerHTML = "";
+  pending = null;
+  showToast("Added to ledger ✓");
+  postToSheet(entry);
+}
+
+/* ---------- BACKEND (Google Sheet via Apps Script) ---------- */
+function backendReady(){
+  return CONFIG.SHEET_URL && !CONFIG.SHEET_URL.startsWith("PASTE_");
+}
+async function loadExpenses(){
+  if(!backendReady()){ setupBanner.style.display = 'block'; renderLedger(); renderTotals(); return; }
+  try{
+    const res = await fetch(CONFIG.SHEET_URL);
+    const data = await res.json();
+    expenses = (data.expenses || []).sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp));
+  }catch(err){
+    showToast("Couldn't load saved expenses");
+  }
+  renderLedger();
+  renderTotals();
+}
+async function postToSheet(entry){
+  if(!backendReady()) return;
+  try{
+    await fetch(CONFIG.SHEET_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(entry)
+    });
+  }catch(err){
+    showToast("Saved here, but couldn't sync to sheet");
+  }
+}
+
+/* ---------- RENDER ---------- */
+function renderTotals(){
+  const today = todayISO();
+  const ym = today.slice(0,7);
+  const todaySum = expenses.filter(e=>e.date===today).reduce((s,e)=>s+Number(e.amount),0);
+  const monthSum = expenses.filter(e=>e.date && e.date.slice(0,7)===ym).reduce((s,e)=>s+Number(e.amount),0);
+  todayTotalEl.textContent = "₹"+fmtINR(todaySum);
+  monthTotalEl.textContent = fmtINR(monthSum);
+  monthLabelEl.textContent = "spent in "+new Date().toLocaleDateString('en-IN',{month:'long'});
+}
+function renderLedger(){
+  if(expenses.length===0){
+    ledgerList.innerHTML = `<div class="empty-state">No entries yet.<br>Tap the <b>mic</b> above and say something like<br>"<b>200 rupees for lunch</b>".</div>`;
+    return;
+  }
+  const groups = {};
+  expenses.forEach(e=>{ (groups[e.date] = groups[e.date]||[]).push(e); });
+  const dates = Object.keys(groups).sort((a,b)=> b.localeCompare(a));
+  ledgerList.innerHTML = dates.map(date=>{
+    const items = groups[date];
+    const rows = items.map(e=>{
+      const cat = CATEGORIES.find(c=>c.name===e.category) || CATEGORIES[CATEGORIES.length-1];
+      return `<div class="entry">
+        <div class="entry-emoji">${cat.emoji}</div>
+        <div class="entry-main">
+          <div class="entry-cat">${e.category}</div>
+          ${e.note ? `<div class="entry-note">${e.note}</div>` : ''}
+        </div>
+        <div class="entry-amt">₹${fmtINR(e.amount)}</div>
+      </div>`;
+    }).join('');
+    return `<div class="day-group"><div class="day-label">${dayLabel(date)}</div>${rows}</div>`;
+  }).join('');
+}
+
+/* ---------- INIT ---------- */
+loadExpenses();
+</script>
+</body>
+</html>
